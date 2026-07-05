@@ -1,0 +1,8 @@
+# [harness-coding:START] managed by harness-coding template, do not edit manually
+.env
+*.local
+*.local.sh
+*.local.yml
+# [harness-coding:END]
+
+.devcontainer/.env

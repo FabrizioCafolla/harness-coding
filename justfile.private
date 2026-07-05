@@ -1,0 +1,110 @@
+
+# ── Template E2E tests ────────────────────────────────────────────────────────
+# Development-only: this file exists solely in the template repo. cli.sh
+# removes it (DEPRECATED_FILES) from every scaffolded/updated target project.
+
+# Scaffold a fresh project from this template into a temp dir and validate it
+[group('test')]
+test-scaffold:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    TMP=$(mktemp -d)
+    trap 'rm -rf "$TMP"' EXIT
+    fail=0
+    ok()   { echo "  [OK]   $1"; }
+    ko()   { echo "  [FAIL] $1"; fail=1; }
+
+    echo "==> Scaffolding fresh project into $TMP"
+    # Tracked + untracked-not-ignored files = what a project created from the
+    # template actually contains (no cache/, no .env, no local junk).
+    git ls-files --cached --others --exclude-standard > /tmp/scaffold-files.$$
+    rsync -a --files-from=/tmp/scaffold-files.$$ . "$TMP/"
+    rm -f /tmp/scaffold-files.$$
+    cd "$TMP"
+
+    echo "==> Required files"
+    for f in justfile justfile.project justfile.tooling cli.sh \
+             .harness-ai/config.yaml \
+             .devcontainer/devcontainer.json .devcontainer/Dockerfile \
+             .devcontainer/docker-compose.yml .devcontainer/docker-compose.project.yml \
+             .devcontainer/scripts/setup-devcontainer.sh \
+             .devcontainer/scripts/setup-devcontainer.project.sh \
+             .devcontainer/configs/.zshrc \
+             .devcontainer/cache/claude/.gitignore; do
+      [[ -e "$f" ]] && ok "$f" || ko "$f missing"
+    done
+
+    echo "==> Bash syntax (all *.sh)"
+    while IFS= read -r -d '' s; do
+      bash -n "$s" && ok "bash -n $s" || ko "bash -n $s"
+    done < <(find . -name '*.sh' -type f -print0)
+
+    echo "==> justfile parses"
+    just --list >/dev/null && ok "just --list" || ko "just --list"
+
+    echo "==> Compose YAML valid"
+    for y in .devcontainer/docker-compose*.yml; do
+      uv run --quiet --with pyyaml python3 -c "import yaml,sys; yaml.safe_load(open('$y'))" \
+        && ok "$y" || ko "$y"
+    done
+
+    echo "==> devcontainer.json valid (JSONC)"
+    uv run --quiet --with pyjson5 python3 -c "
+    import pyjson5
+    pyjson5.load(open('.devcontainer/devcontainer.json'))
+    " && ok "devcontainer.json" || ko "devcontainer.json"
+
+    echo "==> initializeCommand creates .env with LOCAL_UID/GID"
+    CMD=$(uv run --quiet --with pyjson5 python3 -c "
+    import pyjson5
+    print(pyjson5.load(open('.devcontainer/devcontainer.json'))['initializeCommand'])
+    ")
+    /bin/sh -c "$CMD"
+    grep -q LOCAL_UID .devcontainer/.env && grep -q LOCAL_GID .devcontainer/.env \
+      && ok "initializeCommand" || ko "initializeCommand"
+
+    echo "==> docker compose config (merged) renders"
+    if command -v docker &>/dev/null; then
+      docker compose --env-file .devcontainer/.env \
+        -f .devcontainer/docker-compose.yml \
+        -f .devcontainer/docker-compose.project.yml \
+        -f .devcontainer/docker-compose.local.yml \
+        config >/dev/null \
+        && ok "compose config" || ko "compose config"
+    else
+      echo "  [SKIP] docker not available"
+    fi
+
+    if command -v shellcheck &>/dev/null; then
+      echo "==> shellcheck"
+      shellcheck .devcontainer/scripts/*.sh cli.sh \
+        && ok "shellcheck" || ko "shellcheck"
+    fi
+
+    echo ""
+    if [[ $fail -eq 0 ]]; then echo "==> ALL CHECKS PASSED"; else echo "==> FAILURES DETECTED"; exit 1; fi
+
+# Full test: scaffold + docker image build (slow, needs network)
+[group('test')]
+test-scaffold-build: test-scaffold
+    #!/usr/bin/env bash
+    set -euo pipefail
+    TMP=$(mktemp -d)
+    trap 'rm -rf "$TMP"' EXIT
+    echo "==> Scaffolding fresh project into $TMP"
+    # Tracked + untracked-not-ignored files = what a project created from the
+    # template actually contains (no cache/, no .env, no local junk).
+    git ls-files --cached --others --exclude-standard > /tmp/scaffold-files.$$
+    rsync -a --files-from=/tmp/scaffold-files.$$ . "$TMP/"
+    rm -f /tmp/scaffold-files.$$
+    cd "$TMP"
+    echo "LOCAL_UID=$(id -u)" >  .devcontainer/.env
+    echo "LOCAL_GID=$(id -g)" >> .devcontainer/.env
+    [[ -f .devcontainer/docker-compose.local.yml ]] || printf 'services:\n  devcontainer: {}\n' > .devcontainer/docker-compose.local.yml
+    echo "==> Building devcontainer image (default args)"
+    docker compose --env-file .devcontainer/.env \
+      -f .devcontainer/docker-compose.yml \
+      -f .devcontainer/docker-compose.project.yml \
+      -f .devcontainer/docker-compose.local.yml \
+      build
+    echo "==> BUILD OK"
