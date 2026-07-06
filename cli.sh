@@ -247,7 +247,6 @@ echo -e "${BOLD}REPLACE files (fully template-managed)${RESET}"
 process_replace ".devcontainer/docker-compose.yml"
 process_replace ".devcontainer/scripts/setup-devcontainer.sh"
 process_replace "justfile.tooling"
-process_replace "cli.sh"
 echo ""
 
 # ── MARKER files ──────────────────────────────────────────────────────────────
@@ -440,7 +439,7 @@ echo ""
 # Versioned in git: the resolved template state is shared by the team and
 # reproducible, not just local state.
 
-REPLACE_FILES=(".devcontainer/docker-compose.yml" ".devcontainer/scripts/setup-devcontainer.sh" "justfile.tooling" "cli.sh")
+REPLACE_FILES=(".devcontainer/docker-compose.yml" ".devcontainer/scripts/setup-devcontainer.sh" "justfile.tooling")
 MARKER_FILES=("AGENTS.md" ".pre-commit-config.yaml" ".gitignore" ".devcontainer/Dockerfile" ".devcontainer/configs/.zshrc" "justfile")
 DIFF_ONLY_FILES=(".devcontainer/devcontainer.json")
 

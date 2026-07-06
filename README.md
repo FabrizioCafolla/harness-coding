@@ -59,7 +59,7 @@ git clone <your-project> ; cd <your-project>
 curl -fsSL https://raw.githubusercontent.com/FabrizioCafolla/harness-coding/main/cli.sh | bash -s -- update --force
 ```
 
-`--force` is required the first time: cli.sh refuses to run in a directory without `.devcontainer/` unless told to create one. Drop `--force` on every later `update` once the project has been scaffolded once.
+`--force` is required the first time: cli.sh refuses to run in a directory without `.devcontainer/` unless told to create one. Drop `--force` on every later `update` once the project has been scaffolded once. Once `justfile.tooling` exists, use `just harness-coding update --force` instead (see [Updating from template](#updating-from-template)) — no local `cli.sh`, always fetched fresh from `main`.
 
 ### 2. Open in DevContainer
 
@@ -111,16 +111,20 @@ Both are sourced automatically in each shell via `.zshrc`.
 
 ## Updating from template
 
+`cli.sh` is never copied into a consumer project — it's always fetched fresh from `main` (or a
+pinned `--ref`). Once `justfile.tooling` is scaffolded in, use the `harness-coding` target; any
+cli.sh args pass straight through:
+
 ```bash
-bash cli.sh check     # see what changed upstream
-bash cli.sh update    # apply updates
+just harness-coding check           # see what changed upstream
+just harness-coding update --force  # apply updates (--force required on first bootstrap)
 ```
 
-Or via curl (no local clone needed):
+Or via curl directly (no `justfile.tooling` yet):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/FabrizioCafolla/harness-coding/main/cli.sh | bash -s -- check
-curl -fsSL https://raw.githubusercontent.com/FabrizioCafolla/harness-coding/main/cli.sh | bash -s -- update
+curl -fsSL https://raw.githubusercontent.com/FabrizioCafolla/harness-coding/main/cli.sh | bash -s -- update --force
 ```
 
 Options: `--ref REF`, `--force`, `--workspace DIR`
@@ -129,13 +133,17 @@ Options: `--ref REF`, `--force`, `--workspace DIR`
 
 | Category    | Files                                                                                    | Behavior                                               |
 | ----------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| REPLACE     | `docker-compose.yml`, `setup-devcontainer.sh`, `justfile.tooling`, `cli.sh`              | Overwritten on `update`                                |
+| REPLACE     | `docker-compose.yml`, `setup-devcontainer.sh`, `justfile.tooling`                        | Overwritten on `update`                                |
 | MARKER      | `AGENTS.md`, `.pre-commit-config.yaml`, `.gitignore`, `Dockerfile`, `.zshrc`, `justfile` | Only the `[harness-coding:START/END]` block is updated |
 | DIFF-ONLY   | `devcontainer.json`                                                                      | Diff shown, not auto-applied (`--force` to override)   |
 | NEVER-TOUCH | `*.project`, `*.local`, `README.md`, `.harness-ai/config.yaml`, `.harness-coding/config.yml`       | Created once if missing, never overwritten             |
 | DEPRECATED  | `update-devcontainer.sh`, `justfile.test`, `justfile.private`, others                    | Removed automatically on `update`                      |
 
-`.harness-coding/config.yml` sets the template `version` (git ref) cli.sh resolves against; `--ref` on the CLI always wins. Every `update` writes `.harness-coding/lock` (resolved SHA) and `.harness-coding/manifest.json` (per-file category + hash) both versioned in git so the template state is shared and reproducible across the team.
+`cli.sh` itself is not a consumer file — never copied down, only curled fresh (directly, or via
+`just harness-coding` above). `.harness-coding/config.yml` sets the template `version` (git ref)
+cli.sh resolves against; `--ref` on the CLI always wins. Every `update` writes `.harness-coding/lock`
+(resolved SHA) and `.harness-coding/manifest.json` (per-file category + hash), both versioned in
+git so the template state is shared and reproducible across the team.
 
 ## Project structure
 
@@ -160,7 +168,6 @@ justfile.project                            # NEVER-TOUCH
 justfile.local                              # NEVER-TOUCH (gitignored)
 .env.project                                # NEVER-TOUCH
 .env                                        # gitignored
-cli.sh                                      # REPLACE (template update script)
 .harness-ai/config.yaml                     # NEVER-TOUCH (harness-ai provisioning)
 .harness-coding/config.yml                  # NEVER-TOUCH (cli.sh ref pin)
 .harness-coding/lock                        # written by cli.sh update, versioned
