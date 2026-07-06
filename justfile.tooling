@@ -37,8 +37,9 @@ harness-coding *args:
   @curl -fsSL https://raw.githubusercontent.com/FabrizioCafolla/harness-coding/main/cli.sh | bash -s -- {{args}}
 
 [group('tools')]
-harness-ai-cli:
-  @curl -fsSL https://raw.githubusercontent.com/FabrizioCafolla/harness-ai/main/cli.sh | GITHUB_TOKEN=$(gh auth token || false) bash -s -- install --force
+harness-ai *args:
+  @curl -fsSL https://raw.githubusercontent.com/FabrizioCafolla/harness-ai/main/cli.sh | GITHUB_TOKEN=$(gh auth token || false) bash -s -- {{args}}
+
 
 [group('tools')]
 llama-server *args:

@@ -97,6 +97,11 @@ Or `.devcontainer/docker-compose.local.yml` for local-only overrides (gitignored
 - `.devcontainer/scripts/setup-devcontainer.project.sh` team-wide, committed
 - `.devcontainer/scripts/setup-devcontainer.local.sh` local dev, gitignored
 
+Installed tool versions (Claude Code, Copilot CLI, OpenCode, OpenSpec) are checked and updated
+on every container start; each update is capped with a 60s `timeout` so a stuck one (e.g. an
+interactive Copilot auth prompt) can't hang the whole setup. Run `just tools-update` to re-run
+the same check on demand without a full container restart.
+
 ### Just commands
 
 - `justfile.project` team commands, committed

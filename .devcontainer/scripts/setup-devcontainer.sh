@@ -40,41 +40,11 @@ mkdir -p ~/.zsh/completions
 echo "[INFO] Generating just completions from local binary"
 just --completions zsh > ~/.zsh/completions/_just
 
-# ── Optional tools (update only installation is handled by the Dockerfile) ──
+# ── Optional tools (update only; installation is handled by the Dockerfile) ──
+# Each update is capped with `timeout` — copilot in particular can otherwise
+# hang forever on an interactive auth prompt that `yes` doesn't satisfy.
 
-if command -v claude &>/dev/null; then
-  echo "[INFO] Updating claude-code: $(claude --version)"
-  claude update || echo "[WARN] Failed to update claude-code, continuing"
-else
-  echo "[INFO] claude-code not installed, skipping"
-fi
-
-if command -v copilot &>/dev/null; then
-  echo "[INFO] Updating copilot: $(copilot --version)"
-  yes | copilot update || echo "[WARN] Failed to update copilot, continuing"
-else
-  echo "[INFO] copilot not installed, skipping"
-fi
-
-if command -v opencode &>/dev/null; then
-  echo "[INFO] Updating opencode: $(opencode --version)"
-  opencode upgrade || echo "[WARN] Failed to update opencode, continuing"
-else
-  echo "[INFO] opencode not installed, skipping"
-fi
-
-if command -v openspec &>/dev/null; then
-  echo "[INFO] Updating openspec: $(openspec --version)"
-  openspec update --force || echo "[ERROR] Failed to update openspec."
-else
-  if [[ "${OPENSPEC_ENABLE:-true}" == "true" ]]; then
-    echo "[INFO] openspec not installed, installing"
-    npm install -g @fission-ai/openspec@latest \
-      || { echo "[ERROR] Failed to install openspec globally with npm."; exit 1; }
-  else
-    echo "[INFO] openspec not installed and OPENSPEC_ENABLE is false, skipping"
-  fi
-fi
+just tools-update
 
 # ── LLaMA.cpp check ───────────────────────────────────────────────────────────
 
